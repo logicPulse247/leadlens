@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/layout/app-shell";
+import { IcpsView } from "@/components/icp/icps-view";
 
 export const metadata = { title: "ICPs" };
 
 export default function Page() {
-  return <PageHeader title="ICPs" description="Coming together in the next phases." />;
+  return <IcpsView />;
 }

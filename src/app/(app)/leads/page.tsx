@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/layout/app-shell";
+import { LeadsView } from "@/components/leads/leads-view";
 
 export const metadata = { title: "Leads" };
 
 export default function Page() {
-  return <PageHeader title="Leads" description="Coming together in the next phases." />;
+  return <LeadsView />;
 }
