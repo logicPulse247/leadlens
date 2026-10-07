@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  ENRICHING
+  ENRICHED
+  FAILED
+  QUALIFIED
+  REJECTED
+}
+
+enum Tier {
+  A
+  B
+  C
+}
+
+enum LeadSourceType {
+  CSV
+  SEED
+  MANUAL
+}
+
+enum MergeReason {
+  DOMAIN
+  FUZZY_NAME
+}
+
+enum MergeStatus {
+  PENDING
+  MERGED
+  DISMISSED
+}
+
+enum SuppressionType {
+  DOMAIN
+  EMAIL
+}
+
+enum JobType {
+  ENRICH
+  SCORE
+  IMPORT
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Icp {
+  id              String   @id @default(cuid())
+  name            String
+  industries      String[]
+  locations       String[]
+  minEmployees    Int?
+  maxEmployees    Int?
+  includeKeywords String[]
+  excludeKeywords String[]
+  signals         Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  leads           Lead[]
+}
+
+model Lead {
+  id               String         @id @default(cuid())
+  name             String
+  domain           String?        @unique
+  industry         String?
+  location         String?
+  employees        Int?
+  foundedYear      Int?
+  description      String?
+  source           LeadSourceType @default(CSV)
+  status           LeadStatus     @default(NEW)
+  icpId            String?
+  icp              Icp?           @relation(fields: [icpId], references: [id], onDelete: SetNull)
+  score            Int?
+  tier             Tier?
+  scoreDetails     Json?
+  scoreHash        String?
+  rawData          Json?
+  mergedIntoId     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  enrichment       Enrichment?
+  drafts           OutreachDraft[]
+  mergeCandidatesA MergeCandidate[] @relation("CandidateA")
+  mergeCandidatesB MergeCandidate[] @relation("CandidateB")
+
+  @@index([tier])
+  @@index([status])
+  @@index([icpId, score])
+  @@index([industry])
+}
+
+model Enrichment {
+  id            String   @id @default(cuid())
+  leadId        String   @unique
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  emails        Json     @default("[]")
+  phones        String[]
+  socials       Json     @default("{}")
+  about         String?
+  techStack     String[]
+  sourceUrls    String[]
+  robotsAllowed Boolean  @default(true)
+  error         String?
+  fetchedAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+}
+
+model OutreachDraft {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tone      String
+  subject   String
+  body      String
+  factsUsed Json     @default("[]")
+  edited    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leadId, tone])
+}
+
+model MergeCandidate {
+  id         String      @id @default(cuid())
+  leadAId    String
+  leadBId    String
+  leadA      Lead        @relation("CandidateA", fields: [leadAId], references: [id], onDelete: Cascade)
+  leadB      Lead        @relation("CandidateB", fields: [leadBId], references: [id], onDelete: Cascade)
+  similarity Float
+  reason     MergeReason
+  status     MergeStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+
+  @@unique([leadAId, leadBId])
+  @@index([status])
+}
+
+model Suppression {
+  id        String          @id @default(cuid())
+  type      SuppressionType
+  value     String          @unique
+  reason    String?
+  createdAt DateTime        @default(now())
+}
+
+model SavedView {
+  id        String   @id @default(cuid())
+  name      String
+  filters   Json
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id        String    @id @default(cuid())
+  type      JobType
+  status    JobStatus @default(QUEUED)
+  total     Int       @default(0)
+  done      Int       @default(0)
+  failed    Int       @default(0)
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model LlmCache {
+  contentHash String   @id
+  kind        String
+  result      Json
+  createdAt   DateTime @default(now())
+
+  @@index([kind])
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}

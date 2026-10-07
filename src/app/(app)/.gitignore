@@ -1,0 +1,8 @@
+
+# env
+.env
+!.env.example
+
+# test artifacts
+/playwright-report
+/test-results
