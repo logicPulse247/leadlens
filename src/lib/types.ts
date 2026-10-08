@@ -75,7 +75,7 @@ export interface DraftView {
   tone: string;
   subject: string;
   body: string;
-  factsUsed: string[];
+  factsUsed: { id: string; text: string }[];
   edited: boolean;
   updatedAt: string;
 }

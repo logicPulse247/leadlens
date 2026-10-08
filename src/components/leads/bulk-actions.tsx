@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCheck, RefreshCw, XCircle, X } from "lucide-react";
+import { CheckCheck, RefreshCw, Sparkles, XCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, json } from "@/lib/client";
 
-export function BulkActions({ ids, onDone, onClear }: { ids: string[]; onDone: () => void; onClear: () => void }) {
+export function BulkActions({ ids, onDone, onClear, onScore }: { ids: string[]; onDone: () => void; onClear: () => void; onScore: () => void }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -42,6 +42,9 @@ export function BulkActions({ ids, onDone, onClear }: { ids: string[]; onDone: (
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" loading={busy === "ENRICH"} onClick={reEnrich}>
           <RefreshCw /> Re-enrich
+        </Button>
+        <Button size="sm" variant="outline" onClick={onScore}>
+          <Sparkles /> Score
         </Button>
         <Button size="sm" variant="outline" loading={busy === "QUALIFIED"} onClick={() => setStatus("QUALIFIED")}>
           <CheckCheck /> Mark qualified

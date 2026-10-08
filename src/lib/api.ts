@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, type ZodTypeAny, type z } from "zod";
 import { Prisma } from "@prisma/client";
+import { ServiceError } from "@/server/errors";
 import { logger } from "./logger";
 
 export class ApiError extends Error {
@@ -47,6 +48,9 @@ export function route(handler: Handler): Handler {
       }
       if (err instanceof ApiError) {
         return errorResponse(err.status, err.code, err.message, err.details);
+      }
+      if (err instanceof ServiceError) {
+        return errorResponse(err.status, err.code, err.message);
       }
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
         if (err.code === "P2025") return errorResponse(404, "NOT_FOUND", "Resource not found");

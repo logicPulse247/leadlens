@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, ChevronLeft, ChevronRight, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, ChevronLeft, ChevronRight, RefreshCw, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type RowSelectionState } from "@tanstack/react-table";
 import { PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { LeadDrawer } from "./lead-drawer";
 import { BulkActions } from "./bulk-actions";
 import { JobsTray } from "./jobs-tray";
 import { MergeCandidatesButton } from "./merge-candidates";
+import { ScoreDialog } from "./score-dialog";
 
 type SortField = (typeof SORTABLE_FIELDS)[number];
 
@@ -219,6 +220,7 @@ export function LeadsView() {
     views.reload();
   }
 
+  const [scoreOpen, setScoreOpen] = useState<"all" | "selected" | null>(null);
   const [enrichingNew, setEnrichingNew] = useState(false);
   async function enrichNew() {
     setEnrichingNew(true);
@@ -250,7 +252,10 @@ export function LeadsView() {
           <>
             <MergeCandidatesButton onChanged={leads.reload} />
             <Button variant="outline" loading={enrichingNew} onClick={enrichNew}>
-              <Sparkles /> Enrich new leads
+              <RefreshCw /> Enrich new leads
+            </Button>
+            <Button variant="outline" onClick={() => setScoreOpen("all")}>
+              <Sparkles /> Score leads
             </Button>
             <Button asChild>
               <Link href="/import">Add companies</Link>
@@ -309,7 +314,7 @@ export function LeadsView() {
         </div>
       </div>
 
-      {selectedIds.length > 0 && <BulkActions ids={selectedIds} onDone={() => { setSelection({}); leads.reload(); }} onClear={() => setSelection({})} />}
+      {selectedIds.length > 0 && <BulkActions ids={selectedIds} onScore={() => setScoreOpen("selected")} onDone={() => { setSelection({}); leads.reload(); }} onClear={() => setSelection({})} />}
 
       {leads.error && !data ? (
         <ErrorState message={leads.error} onRetry={leads.reload} />
@@ -401,6 +406,17 @@ export function LeadsView() {
           ))}
         </div>
       )}
+
+      <ScoreDialog
+        open={scoreOpen !== null}
+        onOpenChange={(o) => !o && setScoreOpen(null)}
+        leadIds={scoreOpen === "selected" ? selectedIds : undefined}
+        defaultIcpId={filters.icpId !== ALL ? filters.icpId : undefined}
+        onQueued={() => {
+          setSelection({});
+          leads.reload();
+        }}
+      />
 
       <LeadDrawer
         leadId={openId}

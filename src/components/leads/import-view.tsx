@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Compass, FileUp, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,10 @@ export function ImportView() {
   const [enrich, setEnrich] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (icpId === NONE && icps.data?.items.length) setIcpId(icps.data.items[0].id);
+  }, [icps.data, icpId]);
 
   const source = sources.data?.sources[0];
   const icpValue = icpId === NONE ? null : icpId;

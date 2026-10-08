@@ -21,6 +21,8 @@ const schema = z.object({
   ENRICHMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   ENRICHMENT_CONCURRENCY: z.coerce.number().int().positive().default(4),
   ENRICHMENT_OFFLINE: bool,
+  OUTREACH_SENDER_NAME: z.string().min(1).default("Alex Morgan"),
+  OUTREACH_SENDER_FIRM: z.string().min(1).default("Caprae Capital"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
