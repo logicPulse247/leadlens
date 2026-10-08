@@ -1,7 +1,8 @@
 import { route, parseBody, ok, badRequest } from "@/lib/api";
 import { discoverBodySchema } from "@/lib/schemas";
-import { getSource, listSources } from "@/server/sources";
+import { enqueueEnrichment } from "@/server/queue/jobs";
 import { importCompanies } from "@/server/services/import.service";
+import { getSource, listSources } from "@/server/sources";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export const POST = route(async (req) => {
   const source = getSource(body.sourceId);
   if (!source) throw badRequest(`Unknown lead source "${body.sourceId}"`);
   const companies = await source.discover({ industries: body.industries, limit: body.limit });
-  const summary = await importCompanies(companies, { source: "SEED", icpId: body.icpId });
-  return ok(summary, 201);
+  const { createdIds, ...summary } = await importCompanies(companies, { source: "SEED", icpId: body.icpId });
+  const queued = body.enrich && createdIds.length ? await enqueueEnrichment(createdIds, { icpId: body.icpId }) : null;
+  return ok({ ...summary, jobId: queued?.jobId ?? null }, 201);
 });

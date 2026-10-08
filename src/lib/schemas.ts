@@ -50,6 +50,7 @@ export const importBodySchema = z.object({
   mode: z.enum(["csv", "paste"]),
   text: z.string().min(1, "Nothing to import").max(5_000_000),
   icpId: z.string().min(1).nullable().optional(),
+  enrich: z.boolean().default(false),
 });
 
 export const discoverBodySchema = z.object({
@@ -57,6 +58,7 @@ export const discoverBodySchema = z.object({
   industries: z.array(z.string()).max(50).default([]),
   limit: z.number().int().min(1).max(1000).default(500),
   icpId: z.string().min(1).nullable().optional(),
+  enrich: z.boolean().default(false),
 });
 
 export const leadFiltersSchema = z.object({

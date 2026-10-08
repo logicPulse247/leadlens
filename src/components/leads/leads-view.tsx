@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, ChevronLeft, ChevronRight, Search, Table2, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, ChevronLeft, ChevronRight, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type RowSelectionState } from "@tanstack/react-table";
 import { PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import type { IcpView, LeadListResponse, LeadRow, SavedViewDto } from "@/lib/typ
 import { ScoreBadge, StatusBadge } from "./badges";
 import { LeadDrawer } from "./lead-drawer";
 import { BulkActions } from "./bulk-actions";
+import { JobsTray } from "./jobs-tray";
+import { MergeCandidatesButton } from "./merge-candidates";
 
 type SortField = (typeof SORTABLE_FIELDS)[number];
 
@@ -217,6 +219,20 @@ export function LeadsView() {
     views.reload();
   }
 
+  const [enrichingNew, setEnrichingNew] = useState(false);
+  async function enrichNew() {
+    setEnrichingNew(true);
+    try {
+      const res = await apiFetch<{ queued: number }>("/api/enrich", { method: "POST", body: json({ scope: "new", icpId: filters.icpId !== ALL ? filters.icpId : null }) });
+      toast({ title: `Enriching ${res.queued} lead${res.queued === 1 ? "" : "s"}`, description: "Progress is shown above the table." });
+      leads.reload();
+    } catch (e) {
+      toast({ title: "Nothing to enrich", description: e instanceof Error ? e.message : undefined, variant: "error" });
+    } finally {
+      setEnrichingNew(false);
+    }
+  }
+
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
     setPage(1);
@@ -231,11 +247,19 @@ export function LeadsView() {
         title="Leads"
         description="Cleaned, enriched and ranked by fit. Click a company for the full picture."
         actions={
-          <Button variant="outline" asChild>
-            <Link href="/import">Add companies</Link>
-          </Button>
+          <>
+            <MergeCandidatesButton onChanged={leads.reload} />
+            <Button variant="outline" loading={enrichingNew} onClick={enrichNew}>
+              <Sparkles /> Enrich new leads
+            </Button>
+            <Button asChild>
+              <Link href="/import">Add companies</Link>
+            </Button>
+          </>
         }
       />
+
+      <JobsTray onSettled={leads.reload} />
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="relative min-w-[220px] flex-1 sm:max-w-xs">

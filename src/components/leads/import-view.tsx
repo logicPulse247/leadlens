@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { TagInput } from "@/components/ui/tag-input";
 import { Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -37,6 +38,7 @@ export function ImportView() {
   const [mode, setMode] = useState<"csv" | "paste">("paste");
   const [industries, setIndustries] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [enrich, setEnrich] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +98,14 @@ export function ImportView() {
               </Select>
             </div>
 
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3 sm:max-w-sm">
+              <div>
+                <Label htmlFor="enrich-switch">Enrich after import</Label>
+                <p className="text-xs text-muted-foreground">Queue website enrichment for new leads.</p>
+              </div>
+              <Switch id="enrich-switch" checked={enrich} onCheckedChange={setEnrich} />
+            </div>
+
             <Tabs defaultValue="upload">
               <TabsList>
                 <TabsTrigger value="upload">
@@ -131,7 +141,7 @@ export function ImportView() {
                 <Button
                   disabled={!text.trim()}
                   loading={busy}
-                  onClick={() => run(() => apiFetch<Summary>("/api/import", { method: "POST", body: json({ mode, text, icpId: icpValue }) }))}
+                  onClick={() => run(() => apiFetch<Summary>("/api/import", { method: "POST", body: json({ mode, text, icpId: icpValue, enrich }) }))}
                 >
                   Import companies
                 </Button>
@@ -149,7 +159,7 @@ export function ImportView() {
                 <Button
                   loading={busy}
                   disabled={!source}
-                  onClick={() => run(() => apiFetch<Summary>("/api/discover", { method: "POST", body: json({ sourceId: source!.id, industries, icpId: icpValue }) }))}
+                  onClick={() => run(() => apiFetch<Summary>("/api/discover", { method: "POST", body: json({ sourceId: source!.id, industries, icpId: icpValue, enrich }) }))}
                 >
                   Discover companies
                 </Button>
@@ -188,7 +198,7 @@ export function ImportView() {
                   <li>Domains are normalized (no protocol, www or paths).</li>
                   <li>Exact duplicates by domain are merged.</li>
                   <li>Near-duplicate names are flagged for review.</li>
-                  <li>Enrichment runs next, from the Leads page.</li>
+                  <li>Enrichment runs in the background if enabled; watch progress on the Leads page.</li>
                 </ul>
               </CardContent>
             </Card>
