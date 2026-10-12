@@ -23,6 +23,7 @@ import { LeadDrawer } from "./lead-drawer";
 import { BulkActions } from "./bulk-actions";
 import { JobsTray } from "./jobs-tray";
 import { MergeCandidatesButton } from "./merge-candidates";
+import { ExportButtons } from "./export-buttons";
 import { ScoreDialog } from "./score-dialog";
 
 type SortField = (typeof SORTABLE_FIELDS)[number];
@@ -235,6 +236,17 @@ export function LeadsView() {
     }
   }
 
+  const exportFilters = useMemo(() => {
+    const f: Record<string, string | number> = {};
+    if (filters.q.trim()) f.q = filters.q.trim();
+    if (filters.status !== ALL) f.status = filters.status;
+    if (filters.tier !== ALL) f.tier = filters.tier;
+    if (filters.industry !== ALL) f.industry = filters.industry;
+    if (filters.icpId !== ALL) f.icpId = filters.icpId;
+    if (filters.minScore !== "") f.minScore = Number(filters.minScore);
+    return f;
+  }, [filters]);
+
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
     setPage(1);
@@ -311,6 +323,7 @@ export function LeadsView() {
           <Button variant="outline" size="sm" onClick={() => setSavingView(true)}>
             <Bookmark /> Save view
           </Button>
+          <ExportButtons size="sm" filters={exportFilters} label={activeFilterCount ? "Export filtered" : "Export all"} />
         </div>
       </div>
 

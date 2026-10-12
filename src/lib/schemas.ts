@@ -94,3 +94,14 @@ export const savedViewBodySchema = z.object({
     order: z.enum(["asc", "desc"]).optional(),
   }),
 });
+
+export const exportBodySchema = z.object({
+  format: z.enum(["csv", "json"]).default("csv"),
+  ids: z.array(z.string().min(1)).min(1).max(5000).optional(),
+  filters: leadFiltersSchema.optional(),
+});
+
+export const suppressionBodySchema = z.object({
+  entries: z.array(z.string().trim().min(1).max(254)).min(1, "Enter at least one domain or email").max(500),
+  reason: z.string().trim().max(200).optional(),
+});

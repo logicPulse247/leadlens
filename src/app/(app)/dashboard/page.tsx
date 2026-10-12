@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/layout/app-shell";
+import { DashboardView } from "@/components/dashboard/dashboard-view";
 
 export const metadata = { title: "Dashboard" };
 
 export default function Page() {
-  return <PageHeader title="Dashboard" description="Coming together in the next phases." />;
+  return <DashboardView />;
 }

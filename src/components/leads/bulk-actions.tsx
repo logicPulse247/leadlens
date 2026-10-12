@@ -5,6 +5,7 @@ import { CheckCheck, RefreshCw, Sparkles, XCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, json } from "@/lib/client";
+import { ExportButtons } from "./export-buttons";
 
 export function BulkActions({ ids, onDone, onClear, onScore }: { ids: string[]; onDone: () => void; onClear: () => void; onScore: () => void }) {
   const { toast } = useToast();
@@ -52,6 +53,7 @@ export function BulkActions({ ids, onDone, onClear, onScore }: { ids: string[]; 
         <Button size="sm" variant="outline" loading={busy === "REJECTED"} onClick={() => setStatus("REJECTED")}>
           <XCircle /> Mark rejected
         </Button>
+        <ExportButtons size="sm" ids={ids} label="Export selected" />
         <Button size="icon" variant="ghost" aria-label="Clear selection" onClick={onClear}>
           <X />
         </Button>

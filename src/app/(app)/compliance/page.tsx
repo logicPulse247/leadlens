@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/layout/app-shell";
+import { ComplianceView } from "@/components/compliance/compliance-view";
 
 export const metadata = { title: "Ethics & Compliance" };
 
 export default function Page() {
-  return <PageHeader title="Ethics & Compliance" description="Coming together in the next phases." />;
+  return <ComplianceView />;
 }

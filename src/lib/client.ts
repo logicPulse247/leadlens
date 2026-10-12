@@ -89,3 +89,42 @@ export function useDebounced<T>(value: T, delay = 300): T {
   }, [value, delay]);
   return v;
 }
+
+export interface ExportOutcome {
+  filename: string;
+  exported: number;
+  suppressedLeads: number;
+  suppressedEmails: number;
+  truncated: boolean;
+}
+
+/** POSTs the export request and hands the response to the browser as a file download. */
+export async function downloadExport(body: { format: "csv" | "json"; ids?: string[]; filters?: Record<string, unknown> }): Promise<ExportOutcome> {
+  let res: Response;
+  try {
+    res = await fetch("/api/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new ApiClientError("Network error. Check your connection and try again.", 0);
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new ApiClientError(err?.error?.message ?? `Export failed (${res.status})`, res.status, err?.error?.code);
+  }
+  const filename = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `leadlens-export.${body.format}`;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return {
+    filename,
+    exported: Number(res.headers.get("X-Exported-Count") ?? 0),
+    suppressedLeads: Number(res.headers.get("X-Suppressed-Leads") ?? 0),
+    suppressedEmails: Number(res.headers.get("X-Suppressed-Emails") ?? 0),
+    truncated: res.headers.get("X-Export-Truncated") === "true",
+  };
+}
