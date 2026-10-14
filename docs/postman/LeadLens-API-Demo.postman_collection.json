@@ -1,0 +1,443 @@
+{
+  "info": {
+    "_postman_id": "leadlens-api-demo-001",
+    "name": "LeadLens API Demo",
+    "description": "Key APIs for Caprae handbook demonstration.\n\n**Before you start**\n1. `docker compose up -d`\n2. `npm run dev`\n3. `npm run worker` (needed for enrich + score)\n4. Set collection variable `baseUrl` (default http://localhost:3000)\n\n**Suggested order** — run the folder top to bottom. Tests auto-save `icpId`, `leadId`, and `jobId` when present.\n\nDefault LLM is mock (no API keys). Auth is not required.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "icpId", "value": "" },
+    { "key": "leadId", "value": "" },
+    { "key": "jobId", "value": "" },
+    { "key": "demoDomain", "value": "postman-demo.example" }
+  ],
+  "item": [
+    {
+      "name": "01 Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": "Checks Postgres and Redis. Expect `{ \"status\": \"ok\" }`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 ICP",
+      "item": [
+        {
+          "name": "GET List ICPs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('has items', () => pm.expect(body.items).to.be.an('array'));",
+                  "if (body.items && body.items.length) {",
+                  "  pm.collectionVariables.set('icpId', body.items[0].id);",
+                  "  console.log('Saved icpId', body.items[0].id, body.items[0].name);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/icps",
+            "description": "Lists Ideal Customer Profiles. Saves the first ICP id into `icpId`."
+          }
+        },
+        {
+          "name": "POST Create ICP (optional)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('created', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "const id = body.id || (body.item && body.item.id);",
+                  "if (id) pm.collectionVariables.set('icpId', id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Demo ICP\",\n  \"industries\": [\"HVAC\", \"Plumbing\"],\n  \"locations\": [\"OH\", \"NC\"],\n  \"minEmployees\": 8,\n  \"maxEmployees\": 80,\n  \"includeKeywords\": [\"family-owned\", \"residential\"],\n  \"excludeKeywords\": [\"franchise\", \"venture\"],\n  \"signals\": {\n    \"ownerOperated\": true,\n    \"longEstablished\": true,\n    \"noRecentFunding\": true,\n    \"hiringSlowdown\": false\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/icps",
+            "description": "Optional. Seed already creates ICPs — use this only if the list is empty."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Ingest",
+      "item": [
+        {
+          "name": "POST Import (paste)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('created or ok', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "console.log('Import summary', { created: body.created, duplicatesRemoved: body.duplicatesRemoved, jobId: body.jobId });",
+                  "if (body.jobId) pm.collectionVariables.set('jobId', body.jobId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"paste\",\n  \"text\": \"Postman Demo Plumbing, {{demoDomain}}\\nAcme Heating Co, acme-heating-demo.example\",\n  \"icpId\": \"{{icpId}}\",\n  \"enrich\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/import",
+            "description": "Paste-list import. Set enrich true only if the worker is running. Uses collection `icpId` and `demoDomain`."
+          }
+        },
+        {
+          "name": "POST Discover (seed, small batch)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('created or ok', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "console.log('Discover summary', { created: body.created, jobId: body.jobId });",
+                  "if (body.jobId) pm.collectionVariables.set('jobId', body.jobId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceId\": \"seed\",\n  \"industries\": [\"HVAC\"],\n  \"limit\": 15,\n  \"icpId\": \"{{icpId}}\",\n  \"enrich\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/discover",
+            "description": "Imports from data/sample_companies.csv. Keep limit small for demos. Set enrich true with worker running."
+          }
+        },
+        {
+          "name": "GET Discover sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/discover",
+            "description": "Lists LeadSource providers (seed today)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Leads",
+      "item": [
+        {
+          "name": "GET List leads (by score)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('has items', () => pm.expect(body.items).to.be.an('array'));",
+                  "if (body.items && body.items.length) {",
+                  "  pm.collectionVariables.set('leadId', body.items[0].id);",
+                  "  console.log('Saved leadId', body.items[0].id, body.items[0].name, 'score', body.items[0].score);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads?sort=score&order=desc&page=1&pageSize=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads"],
+              "query": [
+                { "key": "sort", "value": "score" },
+                { "key": "order", "value": "desc" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "25" },
+                { "key": "tier", "value": "A", "disabled": true },
+                { "key": "q", "value": "Postman Demo", "disabled": true }
+              ]
+            },
+            "description": "Saves first lead id into `leadId`. Enable the `q` query to find the paste-import demo company."
+          }
+        },
+        {
+          "name": "GET Lead detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/leads/{{leadId}}",
+            "description": "Full lead: enrichment, scoreDetails, drafts. Requires `leadId`."
+          }
+        },
+        {
+          "name": "GET Lead facets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/leads/facets",
+            "description": "Industry and status counts for filters."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Enrich & Score (needs worker)",
+      "item": [
+        {
+          "name": "POST Enrich (new leads)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('accepted', () => pm.expect([200, 202]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "if (body.jobId) pm.collectionVariables.set('jobId', body.jobId);",
+                  "console.log('Enrich queued', body);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"new\",\n  \"force\": false,\n  \"icpId\": \"{{icpId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/enrich",
+            "description": "Queues enrichment for NEW leads. Requires `npm run worker`. After enrich completes, scoring may auto-enqueue when icpId is set."
+          }
+        },
+        {
+          "name": "POST Enrich (selected leadIds)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leadIds\": [\"{{leadId}}\"],\n  \"force\": true,\n  \"icpId\": \"{{icpId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/enrich",
+            "description": "Force re-enrich one lead."
+          }
+        },
+        {
+          "name": "GET Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/jobs",
+            "description": "Active and recent Job rows (what the UI polls)."
+          }
+        },
+        {
+          "name": "GET Job by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}",
+            "description": "Poll until status is COMPLETED."
+          }
+        },
+        {
+          "name": "POST Score (unscored)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('accepted', () => pm.expect([200, 202]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "if (body.jobId) pm.collectionVariables.set('jobId', body.jobId);",
+                  "console.log('Score queued', body);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"icpId\": \"{{icpId}}\",\n  \"scope\": \"unscored\",\n  \"force\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/score",
+            "description": "Requires icpId. Default LLM is mock — no OpenAI/Anthropic keys needed."
+          }
+        },
+        {
+          "name": "POST Score (selected leadIds)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"icpId\": \"{{icpId}}\",\n  \"leadIds\": [\"{{leadId}}\"],\n  \"force\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/score",
+            "description": "Force re-score one lead against the ICP."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Outreach",
+      "item": [
+        {
+          "name": "POST Generate outreach draft",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tone\": \"founder\"\n}"
+            },
+            "url": "{{baseUrl}}/api/leads/{{leadId}}/outreach",
+            "description": "tone: formal | friendly | founder. Fact-grounded; returns 409 if domain is suppressed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Export & Compliance",
+      "item": [
+        {
+          "name": "POST Export CSV (selected)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"format\": \"csv\",\n  \"ids\": [\"{{leadId}}\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/export",
+            "description": "HubSpot-style CSV. Check response headers X-Exported-Count, X-Suppressed-Leads, X-Suppressed-Emails. In Postman: Send and Download to save the file."
+          }
+        },
+        {
+          "name": "POST Export JSON (filters)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"format\": \"json\",\n  \"filters\": {\n    \"tier\": \"A\",\n    \"minScore\": 75\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/export",
+            "description": "Export Tier A leads as JSON."
+          }
+        },
+        {
+          "name": "POST Add suppression",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entries\": [\"{{demoDomain}}\"],\n  \"reason\": \"Postman demo opt-out\"\n}"
+            },
+            "url": "{{baseUrl}}/api/suppressions",
+            "description": "Add demo domain to opt-out list, then re-run Export CSV — expect X-Suppressed-Leads >= 1 and the company omitted."
+          }
+        },
+        {
+          "name": "GET Suppressions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/suppressions"
+          }
+        },
+        {
+          "name": "GET Compliance info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/compliance",
+            "description": "Crawler config + suppressed lead count."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Dashboard & Bulk",
+      "item": [
+        {
+          "name": "GET Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard"],
+              "query": [
+                { "key": "icpId", "value": "{{icpId}}", "disabled": true }
+              ]
+            },
+            "description": "Tiers, industry averages, enrichment success, duplicates removed."
+          }
+        },
+        {
+          "name": "PATCH Bulk mark qualified",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\"{{leadId}}\"],\n  \"status\": \"QUALIFIED\"\n}"
+            },
+            "url": "{{baseUrl}}/api/leads/bulk",
+            "description": "status: QUALIFIED | REJECTED | NEW"
+          }
+        },
+        {
+          "name": "GET Dedupe candidates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dedupe",
+            "description": "Pending fuzzy-name merge candidates."
+          }
+        }
+      ]
+    }
+  ]
+}
